@@ -71,7 +71,7 @@ export function CurrentBill({
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 ml-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="h-7 w-7 ml-2"
                                             onClick={() => removeEntireItem(item.id)}
                                         >
                                             <Trash2 className="h-3 w-3" />
