@@ -51,93 +51,116 @@ export default function RestaurantCalculator() {
     }
   };
 
-  useEffect(() => {
-    const cachedData = localStorage.getItem('restaurant-menu-cache');
-    if (cachedData) {
-      setTimeout(() => {
-        setMenuItems(JSON.parse(cachedData));
-        setIsLoading(false);
-      }, 0);
-    } else {
-      void fetchAndUpdateMenu();
+  const clearBill = () => {
+    if (window.confirm("Are you sure you want to clear the entire bill?")) {
+      setBillItems([]);
     }
-  }, []);
+  };
 
-  const filteredMenu = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+  const handlePrint = () => {
+    setBillItems([]); //ahela ko lahi 
+  };
 
-    return menuItems.filter((menuItem) =>
-      menuItem.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery, menuItems]);
-
-  const subTotal = billItems.reduce((acc, curr) => acc + curr.item.price * curr.quantity, 0);
-  const vatAmount = subTotal * VAT_RATE;
-  const grandTotal = subTotal + vatAmount;
-
-  const addToBill = (menuItem: MenuItem) => {
-    setBillItems((prev) => {
-      const existing = prev.find((b) => b.item.id === menuItem.id);
-      if (existing) {
-        return prev.map((b) =>
-          b.item.id === menuItem.id ? { ...b, quantity: b.quantity + 1 } : b
-        );
+    useEffect(() => {
+      const cachedData = localStorage.getItem('restaurant-menu-cache');
+      if (cachedData) {
+        setTimeout(() => {
+          setMenuItems(JSON.parse(cachedData));
+          setIsLoading(false);
+        }, 0);
+      } else {
+        void fetchAndUpdateMenu();
       }
-      return [...prev, { item: menuItem, quantity: 1 }];
-    });
-  };
+    }, []);
 
-  const updateQuantity = (id: string, delta: number) => {
-    setBillItems((prev) =>
-      prev.map((b) => {
-        if (b.item.id === id) {
-          const newQuantity = b.quantity + delta;
-          return { ...b, quantity: Math.max(0, newQuantity) };
+    const filteredMenu = useMemo(() => {
+      if (!searchQuery.trim()) return [];
+
+      const normalize = (str: string) =>
+        str.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const normalizedQuery = normalize(searchQuery);
+
+      return menuItems.filter((menuItem) => {
+        const normalizedName = normalize(menuItem.name || "");
+        const normalizedCategory = normalize(menuItem.category || "");
+
+        return (
+          normalizedName.includes(normalizedQuery) ||
+          normalizedCategory.includes(normalizedQuery)
+        );
+      });
+    }, [searchQuery, menuItems]);
+
+    const subTotal = billItems.reduce((acc, curr) => acc + curr.item.price * curr.quantity, 0);
+    const vatAmount = subTotal * VAT_RATE;
+    const grandTotal = subTotal + vatAmount;
+
+    const addToBill = (menuItem: MenuItem) => {
+      setBillItems((prev) => {
+        const existing = prev.find((b) => b.item.id === menuItem.id);
+        if (existing) {
+          return prev.map((b) =>
+            b.item.id === menuItem.id ? { ...b, quantity: b.quantity + 1 } : b
+          );
         }
-        return b;
-      }).filter((b) => b.quantity > 0)
+        return [...prev, { item: menuItem, quantity: 1 }];
+      });
+    };
+
+    const updateQuantity = (id: string, delta: number) => {
+      setBillItems((prev) =>
+        prev.map((b) => {
+          if (b.item.id === id) {
+            const newQuantity = b.quantity + delta;
+            return { ...b, quantity: Math.max(0, newQuantity) };
+          }
+          return b;
+        }).filter((b) => b.quantity > 0)
+      );
+    };
+
+    const removeEntireItem = (id: string) => {
+      setBillItems((prev) => prev.filter((b) => b.item.id !== id));
+    };
+
+    if (isLoading) {
+      return <div className="flex h-screen items-center justify-center text-lg font-medium text-muted-foreground">Loading Menu...</div>;
+    }
+
+    return (
+      <div className="max-w-6xl mx-auto p-4 flex flex-col gap-4">
+        <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm">
+          <h1 className="text-xl font-bold">Fusion Park</h1>
+          <Button
+            onClick={fetchAndUpdateMenu}
+            disabled={isRefreshing}
+            variant="outline"
+          >
+            <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Syncing...' : 'Refresh Menu'}
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <MenuSearch
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filteredMenu={filteredMenu}
+            addToBill={addToBill}
+          />
+
+          <CurrentBill
+            billItems={billItems}
+            updateQuantity={updateQuantity}
+            removeEntireItem={removeEntireItem}
+            clearBill={clearBill}
+            subTotal={subTotal}
+            vatAmount={vatAmount}
+            grandTotal={grandTotal}
+            onPrint={handlePrint}
+          />
+        </div>
+      </div>
     );
-  };
-
-  const removeEntireItem = (id: string) => {
-    setBillItems((prev) => prev.filter((b) => b.item.id !== id));
-  };
-
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center text-lg font-medium text-muted-foreground">Loading Menu...</div>;
   }
-
-  return (
-    <div className="max-w-6xl mx-auto p-4 flex flex-col gap-4">
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm">
-        <h1 className="text-xl font-bold">Fusion Park</h1>
-        <Button
-          onClick={fetchAndUpdateMenu}
-          disabled={isRefreshing}
-          variant="outline"
-        >
-          <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          {isRefreshing ? 'Syncing...' : 'Refresh Menu'}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <MenuSearch
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          filteredMenu={filteredMenu}
-          addToBill={addToBill}
-        />
-
-        <CurrentBill
-          billItems={billItems}
-          updateQuantity={updateQuantity}
-          removeEntireItem={removeEntireItem}
-          subTotal={subTotal}
-          vatAmount={vatAmount}
-          grandTotal={grandTotal}
-        />
-      </div>
-    </div>
-  );
-}
