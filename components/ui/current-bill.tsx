@@ -42,7 +42,7 @@ export function CurrentBill({
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col overflow-hidden">
-                <ScrollArea className="flex-1 pr-4 mb-4">
+                <ScrollArea className="flex-1 pr-4 min-h-0">
                     {billItems.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-muted-foreground mt-10 gap-2">
                             <div className="rounded-full bg-slate-100 p-3">
